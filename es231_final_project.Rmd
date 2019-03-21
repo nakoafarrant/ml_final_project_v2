@@ -863,8 +863,12 @@ plot(boost.candidates ,i="Transit")
 plot(boost.candidates ,i="White")
 
 ```
+<<<<<<< HEAD
 Using boosting, white and transit now become the top two most important variables. The above plots tell us that higher proportion of country transit ridership is negatively correlated with Trump winning the vote while higher proportions of white populations in a county is positively correlated with Trump winning the vote. 
 
+=======
+Using boosting, White and Transit now become the top two most important variables. The above plots tell us that higher proportion of country transit ridership is negatively correlated with Trump winning the vote while higher proportions of white populations in a county is positively correlated with Trump winning the vote.
+>>>>>>> fc09507cfe6463490408fcaf5c82b69084363c58
 
 ```{r, echo=FALSE}
 yhat.boost = predict(boost.candidates, newdata = tst.cl.new, n.trees = 500)
