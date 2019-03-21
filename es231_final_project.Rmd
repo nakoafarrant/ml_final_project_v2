@@ -900,6 +900,20 @@ test.svm.err
 The test error rate for support vector model, `r round(test.svm.err, 4)`, is very similar to that of the random forest model and lower than the boosting model. 
 
 
+```{r}
+#change names but use this matrix to store results from rf, boosting, etc.
+testmodels = matrix(NA, nrow=7, ncol=1)
+colnames(testmodels) = c("Test Error")
+rownames(testmodels) = c("tree","logistic","lasso", "bagging", "random forest", "boosting", "support vector model")
+
+testmodels[1,1] = calc_error_rate(predict.tree.test, tst.cl$candidate)
+testmodels[2,1] = calc_error_rate(predict.logistic.test$candidate, tst.cl$candidate)
+testmodels[3,1] = calc_error_rate(predict.lasso.test, y.tst)
+testmodels[4,1] = test.bag.err
+testmodels[5,1] = test.rf.err
+testmodels[6,1] = test.boost.err
+testmodels[7,1] = test.svm.err
+```
 
   * Bootstrap: Perform boostrap to generate plots similar to ISLR Figure 4.10/4.11. Discuss the results. 
   
