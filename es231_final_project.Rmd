@@ -736,14 +736,6 @@ The non-zero coefficients for the LASSO model are White, Citizen, Poverty, Child
 
 20.  Compute ROC curves for the decision tree, logistic regression and LASSO logistic regression using predictions on the test data.  Display them on the same plot.  Based on your classification results, discuss the pros and cons of the various methods.  Are the different classifiers more appropriate for answering different kinds of questions about the election?
 
-```{r}
-predict.lasso.test2 = predict.lasso.test %>% 
-  as.data.frame() %>% 
-  mutate(predict.lasso.test, candidate = factor(ifelse(predict.lasso.test[,1] == "0", "Donald Trump", "Hillary Clinton"))) %>% 
-  select(candidate)
-
-```
-
 
 ```{r, echo=FALSE}
 
@@ -755,7 +747,11 @@ perf.tree <- performance(pred.tree, "tpr", "fpr")
 pred.logistic = prediction(as.numeric(predict.logistic.test$candidate), as.numeric(tst.cl$candidate))
 perf.logistic <- performance(pred.logistic, "tpr", "fpr")
 
-pred.lasso = prediction(as.numeric(predict.lasso.test2$candidate), as.numeric(tst.cl$candidate))
+predict.lasso.test = predict.lasso.test %>% as.data.frame()
+predict.lasso.test = mutate(predict.lasso.test, candidate = factor(ifelse(predict.lasso.test[,1] == "0", "Donald Trump", "Hillary Clinton"))) %>% 
+  select(candidate)
+
+pred.lasso = prediction(as.numeric(predict.lasso.test$candidate), as.numeric(tst.cl$candidate))
 perf.lasso <- performance(pred.lasso, "tpr", "fpr")
 
 perf.tree@x.name = perf.logistic@x.name= perf.lasso@x.name="False Positive Rate"
@@ -803,7 +799,8 @@ yhat.bag = predict(bag.candidates, newdata = tst.cl.new)
 # Confusion matrix
 bag.err = table(pred = yhat.bag, truth = tst.cl.new$candidate)
 test.bag.err = 1 - sum(diag(bag.err))/sum(bag.err)
-test.bag.err
+
+
 
 ```
 
@@ -866,7 +863,7 @@ plot(boost.candidates ,i="Transit")
 plot(boost.candidates ,i="White")
 
 ```
-The above plots tell us that higher proportion of country transit ridership is negatively correlated with Trump winning the vote while higher proportions of white populations in a county is positively correlated with Trump winning the vote. 
+Using boosting, white and transit now become the top two most important variables. The above plots tell us that higher proportion of country transit ridership is negatively correlated with Trump winning the vote while higher proportions of white populations in a county is positively correlated with Trump winning the vote. 
 
 
 ```{r, echo=FALSE}
@@ -899,6 +896,22 @@ test.svm.err
 ```
 The test error rate for support vector model, `r round(test.svm.err, 4)`, is very similar to that of the random forest model and lower than the boosting model. 
 
+```{r}
+
+#change names but use this matrix to store results from rf, boosting, etc.
+testmodels = matrix(NA, nrow=7, ncol=1)
+colnames(testmodels) = c("Test Error")
+rownames(testmodels) = c("tree","logistic","lasso", "bagging", "random forest", "boosting", "support vector model")
+
+testmodels[1,1] = calc_error_rate(predict.tree.test, tst.cl$candidate)
+testmodels[2,1] = calc_error_rate(predict.logistic.test$candidate, tst.cl$candidate)
+testmodels[3,1] = calc_error_rate(predict.lasso.test, y.tst)
+testmodels[4,1] = test.bag.err
+testmodels[5,1] = test.rf.err
+testmodels[6,1] = test.boost.err
+testmodels[7,1] = test.svm.err
+
+```
 
 
   * Bootstrap: Perform boostrap to generate plots similar to ISLR Figure 4.10/4.11. Discuss the results. 
