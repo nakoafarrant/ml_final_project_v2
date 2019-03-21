@@ -736,6 +736,14 @@ The non-zero coefficients for the LASSO model are White, Citizen, Poverty, Child
 
 20.  Compute ROC curves for the decision tree, logistic regression and LASSO logistic regression using predictions on the test data.  Display them on the same plot.  Based on your classification results, discuss the pros and cons of the various methods.  Are the different classifiers more appropriate for answering different kinds of questions about the election?
 
+```{r}
+predict.lasso.test2 = predict.lasso.test %>% 
+  as.data.frame() %>% 
+  mutate(predict.lasso.test, candidate = factor(ifelse(predict.lasso.test[,1] == "0", "Donald Trump", "Hillary Clinton"))) %>% 
+  select(candidate)
+
+```
+
 
 ```{r, echo=FALSE}
 
@@ -747,11 +755,7 @@ perf.tree <- performance(pred.tree, "tpr", "fpr")
 pred.logistic = prediction(as.numeric(predict.logistic.test$candidate), as.numeric(tst.cl$candidate))
 perf.logistic <- performance(pred.logistic, "tpr", "fpr")
 
-predict.lasso.test = predict.lasso.test %>% as.data.frame()
-predict.lasso.test = mutate(predict.lasso.test, candidate = factor(ifelse(predict.lasso.test[,1] == "0", "Donald Trump", "Hillary Clinton"))) %>% 
-  select(candidate)
-
-pred.lasso = prediction(as.numeric(predict.lasso.test$candidate), as.numeric(tst.cl$candidate))
+pred.lasso = prediction(as.numeric(predict.lasso.test2$candidate), as.numeric(tst.cl$candidate))
 perf.lasso <- performance(pred.lasso, "tpr", "fpr")
 
 perf.tree@x.name = perf.logistic@x.name= perf.lasso@x.name="False Positive Rate"
