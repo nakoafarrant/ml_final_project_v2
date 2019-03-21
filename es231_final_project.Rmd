@@ -777,11 +777,6 @@ Despite the logistic method's improved test (and training) error rate, both the 
 
 21. This is an open question. Interpret and discuss any overall insights gained in this analysis and possible explanations. Use any tools at your disposal to make your case: visualize errors on the map, discuss what does or doesn't seem reasonable based on your understanding of these methods, propose possible directions (collecting additional data, domain knowledge, etc).  In addition, propose and tackle _at least_ one more interesting question. Creative and thoughtful analyses will be rewarded! _This part will be worth up to 20\% of your final project grade!  
 
-Some possibilities for further exploration are:
-
-  * Data preprocessing: we aggregated sub-county level data before performing classification. Would classification at the sub-county level before determining the winner perform better? What implicit assumptions are we making?
-
-  * Exploring additional classification methods: KNN, LDA, QDA, SVM, random forest, boosting etc. (You may research and use methods beyond those covered in this course). How do these compare to logistic regression and the tree method?
 
 # Bagging
 ```{r, echo=FALSE}
@@ -789,7 +784,7 @@ trn.cl.new <- droplevels(trn.cl)
 tst.cl.new <- droplevels(tst.cl)
 
 bag.candidates = randomForest(candidate ~ ., data=trn.cl.new , mtry=6, importance=TRUE) 
-bag.candidates
+
 
 plot(bag.candidates)
 legend("top", colnames(bag.candidates$err.rate),col=1:4,cex=0.8,fill=1:4)
@@ -820,7 +815,7 @@ yhat.rf = predict (rf.candidates, newdata = tst.cl.new)
 # Confusion matrix
 rf.err = table(pred = yhat.rf, truth = tst.cl.new$candidate)
 test.rf.err = 1 - sum(diag(rf.err))/sum(rf.err)
-test.rf.err
+
 
 ```
 
@@ -863,7 +858,7 @@ plot(boost.candidates ,i="Transit")
 plot(boost.candidates ,i="White")
 
 ```
-Using boosting, White and Transit now become the top two most important variables. The above plots tell us that higher proportion of country transit ridership is negatively correlated with Trump winning the vote while higher proportions of white populations in a county is positively correlated with Trump winning the vote.
+Using boosting, White and Transit now become the top two most important variables. The above plots of partial dependence show the marginal effect of these variables on voter behavior while integrating out other variables. The plots tell us that higher proportion of country transit ridership is negatively correlated with Trump winning the vote while higher proportions of white populations in a county is positively correlated with Trump winning the vote. 
 
 
 ```{r, echo=FALSE}
@@ -874,10 +869,30 @@ boost.err = table(pred = yhat.boost, truth = tst.cl.new$candidate)
 
 test.boost.err = 1 - sum(diag(boost.err))/sum(boost.err)
 
-test.boost.err
+
 
 ```
-The test error rate for boosting, `r round(test.boost.err, 4)`, is higher than that of bagging and random forest. 
+The test error rate for boosting, `r round(test.boost.err, 4)`, is higher than that of bagging and random forest as well as the decision tree model. We would expect that boosting would have the lowest of the four models or that comparable to bagging as boosting uses trees that are grown sequentially using residuals produced from one tree to the next to improve the fit and thus should improve the prediction from the decision tree. Perhaps the fact that White and Transit are such substantially stronger variables in the output (top two blue bars in the summary graph) has skewed the model to mainly consider these factors and largely ignore other factors that are in fact important determinants of voting behavior. Further, changing the shrinkage parameter value from 0.001 to a larger values (tested with 0.02-0.5) reduced the importance value of the top two variables, but the order remained the same and the boosting test error did not change. 
+
+```{r, echo= FALSE}
+
+boost.candidates2 = gbm(ifelse(candidate=="Donald Trump",1,0)~., data=trn.cl.new, 
+                     distribution="bernoulli", n.trees=500, interaction.depth=4, shrinkage = 0.2)
+
+yhat.boost2 = predict(boost.candidates2, newdata = tst.cl.new, n.trees = 500)
+
+# Confusion matrix
+boost.err2 = table(pred = yhat.boost2, truth = tst.cl.new$candidate)
+
+test.boost.err2 = 1 - sum(diag(boost.err2))/sum(boost.err2)
+
+
+
+```
+```{r, echo=FALSE}
+summary(boost.candidates2)
+```
+
 
 # Support Vector Model
 
@@ -891,50 +906,58 @@ smv.err = table(pred=yhat.svm, truth=tst.cl.new$candidate)
 svm.err = table(pred = yhat.svm, truth = tst.cl.new$candidate)
 test.svm.err = 1 - sum(diag(svm.err))/sum(svm.err)
 
-test.svm.err
+
 
 ```
-The test error rate for support vector model, `r round(test.svm.err, 4)`, is very similar to that of the random forest model and lower than the boosting model. 
+The test error rate for support vector model, `r round(test.svm.err, 4)`, is very similar to that of the random forest model and a noticeable improvement from the boosting model. Using a radial kernal, there were 595 support vectors with 337 in the Donald Trump class and 258 for the Hillary Clinton class. 
 
-```{r}
+```{r, echo = FALSE}
+set.seed(1)
+tune.candidates =tune(svm, candidate ~ ., data=trn.cl.new, kernel="radial", ranges = list(cost = c(0.001, 0.01, 0.1, 1, 5, 10, 100)), scale = FALSE)
 
+summary(tune.candidates)
+
+bestmod = tune.candidates$best.model
+summary(bestmod)
+
+svm.candidates2=svm(candidate ~ ., data=trn.cl.new, kernel="radial", cost=0.001,scale=TRUE)
+yhat.svm2=predict(svm.candidates2,tst.cl.new)
+summary(svm.candidates2)
+smv.err2 = table(pred=yhat.svm2, truth=tst.cl.new$candidate)
+
+svm.err2 = table(pred = yhat.svm2, truth = tst.cl.new$candidate)
+test.svm.err2 = 1 - sum(diag(svm.err2))/sum(svm.err2)
+
+
+
+svm.candidates3=svm(candidate ~ ., data=trn.cl.new, kernel="radial", cost=10,scale=TRUE)
+yhat.svm3=predict(svm.candidates3,tst.cl.new)
+summary(svm.candidates3)
+smv.err3 = table(pred=yhat.svm3, truth=tst.cl.new$candidate)
+
+svm.err3 = table(pred = yhat.svm3, truth = tst.cl.new$candidate)
+test.svm.err3 = 1 - sum(diag(svm.err3))/sum(svm.err3)
+
+
+```
+Then using the tune() function to perform a cross validation of several possible cost values and find an optimal cost parameter, we found that 0.001 would be best to use. In this model, 2456 support vectors are modeled with 2087 predicting Donald Trump and 369 predicting Hillary Clinton. With a smaller cost parameter we would expect a larger number of support vectors as the margin is wider and no observations are misclassified, but this does not necessarily improve our test error. After rerunning the svm, the new test error is `r round(test.svm.err2, 4)`. This may be because the variables could not be scaled with a constant "weight". Testing with cost constraints violation of 10 actually seems to produce the best test error rate `r round(test.svm.err3, 4)`.
+
+```{r, echo = FALSE}
 #change names but use this matrix to store results from rf, boosting, etc.
 testmodels = matrix(NA, nrow=7, ncol=1)
 colnames(testmodels) = c("Test Error")
 rownames(testmodels) = c("tree","logistic","lasso", "bagging", "random forest", "boosting", "support vector model")
 
-testmodels[1,1] = calc_error_rate(predict.tree.test, tst.cl$candidate)
-testmodels[2,1] = calc_error_rate(predict.logistic.test$candidate, tst.cl$candidate)
-testmodels[3,1] = calc_error_rate(predict.lasso.test, y.tst)
+testmodels[1,1] = records[1,2]
+testmodels[2,1] = records[2,2]
+testmodels[3,1] = records[3,2]
 testmodels[4,1] = test.bag.err
 testmodels[5,1] = test.rf.err
 testmodels[6,1] = test.boost.err
 testmodels[7,1] = test.svm.err
 
+kable(testmodels, col.names = c("Test Errors"), caption = "Summary of Test Errors of Seven Classification Models")  %>% kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"), full_width=FALSE) %>% scroll_box(width = "100%")
+
 ```
 
-```{r}
-#change names but use this matrix to store results from rf, boosting, etc.
-testmodels = matrix(NA, nrow=7, ncol=1)
-colnames(testmodels) = c("Test Error")
-rownames(testmodels) = c("tree","logistic","lasso", "bagging", "random forest", "boosting", "support vector model")
-
-testmodels[1,1] = calc_error_rate(predict.tree.test, tst.cl$candidate)
-testmodels[2,1] = calc_error_rate(predict.logistic.test$candidate, tst.cl$candidate)
-testmodels[3,1] = calc_error_rate(predict.lasso.test, y.tst)
-testmodels[4,1] = test.bag.err
-testmodels[5,1] = test.rf.err
-testmodels[6,1] = test.boost.err
-testmodels[7,1] = test.svm.err
-```
-
-  * Bootstrap: Perform boostrap to generate plots similar to ISLR Figure 4.10/4.11. Discuss the results. 
-  
-  * Use linear regression models to predict the `total` vote for each candidate by county.  Compare and contrast these results with the classification models.  Which do you prefer and why?  How might they complement one another?
-    
-
-  * Conduct an exploratory analysis of the "purple" counties-- the counties which the models predict Clinton and Trump were roughly equally likely to win.  What is it about these counties that make them hard to predict?
-    
-
-  * Instead of using the native attributes (the original features), we can use principal components to create new (and lower dimensional) sets of features with which to train a classification model.  This sometimes improves classification performance.  Compare classifiers trained on the original features with those trained on PCA features.  
-    
+ 
